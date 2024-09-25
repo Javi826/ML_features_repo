@@ -343,6 +343,50 @@ def price_intensity(df, col='close', n=10):
     return df
 
 
+# PERCENTAGE PRICE OSCILLATOR (PPO)
+def PPO(df, close_col, short_length, long_length, n_to_smooth=1):
+    # Convert lengths to integers
+    short_length = int(short_length + 0.5)
+    long_length = int(long_length + 0.5)
+    n_to_smooth = int(n_to_smooth + 0.5)
+
+    # Initialize variables
+    n = len(df)
+    front_bad = long_length + n_to_smooth
+    if front_bad > n:
+        front_bad = n
+    back_bad = 0
+
+    long_alpha = 2.0 / (long_length + 1.0)
+    short_alpha = 2.0 / (short_length + 1.0)
+
+    long_sum = short_sum = df[close_col].iloc[0]
+    output = np.zeros(n)
+    output[0] = 0.0  # Poorly defined at first case
+
+    # Compute PPO
+    for icase in range(1, n):
+        long_sum = long_alpha * df[close_col].iloc[icase] + (1.0 - long_alpha) * long_sum
+        short_sum = short_alpha * df[close_col].iloc[icase] + (1.0 - short_alpha) * short_sum
+        output[icase] = 100.0 * (short_sum - long_sum) / (long_sum + 1.e-15)  # Official PPO
+
+        # Optional normalization (comment out if not needed)
+        output[icase] = 100.0 * norm.cdf(0.2 * output[icase]) - 50.0
+
+    # Smooth if requested
+    if n_to_smooth > 1:
+        alpha = 2.0 / (n_to_smooth + 1.0)
+        smoothed = output[0]
+        for icase in range(1, n):
+            smoothed = alpha * output[icase] + (1.0 - alpha) * smoothed
+            output[icase] -= smoothed
+
+    # Store PPO result in DataFrame
+    df[f"PPO_{short_length}_{long_length}"] = output
+
+    return df
+
+
 def create_features(df):
     df = SMA(df, col='close', n=10)
     df = EMA(df, col='close', n=10)
