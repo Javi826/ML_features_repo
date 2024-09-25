@@ -80,7 +80,7 @@ def smooth_MACD(df, col, n_fast=12, n_slow=26, n_signal=9, ma_type='SMA', ma_per
     df[f'MACD_signal_{n_signal}'] = macd_indicator.macd_signal()
     df[f'MACD_histogram_{n_fast}_{n_slow}_{n_signal}'] = macd_indicator.macd_diff()
 
-    # Suavizar el histograma MACD
+    # Smoothing
     if ma_type == 'SMA':
         df[f'MACD_histogram_{n_fast}_{n_slow}_{n_signal}_{ma_type}_{ma_period}'] = df[
             f'MACD_histogram_{n_fast}_{n_slow}_{n_signal}'].rolling(window=ma_period).mean()
@@ -194,9 +194,9 @@ def calculate_trend(df, close_col, high_col, low_col, lookback, atr_length, tren
         col_name = 'cubic_trend'
     else:
         raise ValueError("Tren no valid 'linear', 'quadratic' o 'cubic'.")
-
+    # ATR (Average True Range)
     for icase in range(front_bad, n):
-        # ATR (Average True Range)
+
         tr = np.maximum(
             df[high_col].iloc[icase - atr_length + 1:icase + 1] - df[low_col].iloc[icase - atr_length + 1:icase + 1],
             np.abs(df[high_col].iloc[icase - atr_length + 1:icase + 1] - df[close_col].iloc[
@@ -293,7 +293,7 @@ def entropy_filter(df, close_col, wordlen, window=None):
 
 # PRICE INTENSITY
 def price_intensity(df, col='close', n=10):
-    
+
     if col not in df.columns:
         raise ValueError(f"La columna '{col}' no existe en el DataFrame.")
 
@@ -315,7 +315,7 @@ def price_intensity(df, col='close', n=10):
         denom = 1.e-60
     output[0] = (close_col[0] - open_col[0]) / denom
 
-    # Calcular valores crudos
+    # Raw Values
     for icase in range(1, n_data):
         denom = high_col[icase] - low_col[icase]
         if high_col[icase] - close_col[icase - 1] > denom:
@@ -326,7 +326,7 @@ def price_intensity(df, col='close', n=10):
             denom = 1.e-60
         output[icase] = (close_col[icase] - open_col[icase]) / denom
 
-    # Suavizar si se solicita
+    # Smoothing
     if n_to_smooth > 1:
         alpha = 2.0 / (n_to_smooth + 1.0)
         smoothed = output[0]
@@ -334,11 +334,11 @@ def price_intensity(df, col='close', n=10):
             smoothed = alpha * output[icase] + (1.0 - alpha) * smoothed
             output[icase] = smoothed
 
-    # Transformación final y compresión leve
+    # Compression
     for icase in range(n_data):
         output[icase] = 100.0 * norm.cdf(0.8 * np.sqrt(n_to_smooth) * output[icase]) - 50.0
 
-    # Agregar la columna al DataFrame
+    # Add column
     df[f"price_intensity_{n_to_smooth}"] = output
     return df
 
